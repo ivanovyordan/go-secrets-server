@@ -33,7 +33,8 @@ func buildSecret(text string, maxViews string, ttl string) Secret {
 
 	if minutes > 0 {
 		now := time.Now()
-		expiresAt = now.Add(time.Minute * time.Duration(minutes)).String()
+		end, _ := now.Add(time.Minute * time.Duration(minutes)).MarshalText()
+		expiresAt = string(end)
 	}
 
 	return Secret{
@@ -59,10 +60,34 @@ func createSecret(response http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(response).Encode(secret)
 }
 
+func getSecret(response http.ResponseWriter, request *http.Request) {
+	response.Header().Set("Content-Type", "application/json")
+
+	params := mux.Vars(request)
+
+	for index, secret := range secrets {
+		if secret.Hash == params["hash"] && secret.RemainingViews > 0 {
+			parsed, _ := time.Parse(time.RFC3339, secret.ExpiresAt)
+
+			if time.Now().After(parsed) {
+				break
+			}
+
+			secret.RemainingViews -= 1
+			secrets[index].RemainingViews -= 1
+			json.NewEncoder(response).Encode(secret)
+			return
+		}
+	}
+
+	json.NewEncoder(response).Encode(&Secret{})
+}
+
 func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/v1/secret", createSecret).Methods("POST")
+	router.HandleFunc("/v1/secret/{hash}", getSecret).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
