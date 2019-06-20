@@ -11,11 +11,11 @@ import (
 var all []Secret
 
 type Secret struct {
-	Hash           string `json:"hash"`
-	SecretText     string `json:"secretText"`
-	CreatedAt      string `json:"createdAt"`
-	ExpiresAt      string `json:"expiresAt"`
-	RemainingViews int32  `json:"remainingViews"`
+	Hash           string `json:"hash" xml:"hash"`
+	SecretText     string `json:"secretText" xml:"secretText"`
+	CreatedAt      string `json:"createdAt" xml:"createdAt"`
+	ExpiresAt      string `json:"expiresAt" xml:"expiresAt"`
+	RemainingViews int32  `json:"remainingViews" xml:"remainingViews`
 }
 
 func Build(text string, maxViews string, ttl string) Secret {

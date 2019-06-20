@@ -2,16 +2,38 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 
 	"secrets/secret"
 )
 
+func respond(response http.ResponseWriter, request *http.Request, message secret.Secret) {
+	accept := strings.ToLower(request.Header.Get("Accept"))
+	var content []byte
+
+	if accept == "application/xml" {
+		const (
+			Header = `<?xml version="1.0" encoding="UTF-8"?>` + "\n"
+		)
+
+		response.Header().Set("Content-Type", "application/xml")
+		content, _ = xml.MarshalIndent(message, "", "  ")
+		content = []byte(Header + string(content))
+
+	} else if accept == "application/json" {
+		response.Header().Set("Content-Type", "application/json")
+		content, _ = json.Marshal(message)
+	}
+
+	response.Write(content)
+}
+
 func createSecret(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
 	request.ParseForm()
 
 	message := secret.Build(
@@ -20,16 +42,14 @@ func createSecret(response http.ResponseWriter, request *http.Request) {
 		request.FormValue("expireAfter"),
 	)
 
-	json.NewEncoder(response).Encode(message)
+	respond(response, request, message)
 }
 
 func getSecret(response http.ResponseWriter, request *http.Request) {
-	response.Header().Set("Content-Type", "application/json")
-
 	params := mux.Vars(request)
 	message := secret.Find(params["hash"])
 
-	json.NewEncoder(response).Encode(message)
+	respond(response, request, message)
 }
 
 func main() {
