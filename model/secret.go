@@ -19,33 +19,23 @@ type Secret struct {
 }
 
 func NewSecret(text string, maxViews string, ttl string) (Secret, error) {
-	remainingViews, err := strconv.ParseInt(maxViews, 10, 32)
-	if err != nil {
-		return invalidInput()
+	if !isValid(text, maxViews, ttl) {
+		return Secret{}, errors.New("Invalid input")
 	}
 
-	minutes, err := strconv.ParseInt(ttl, 10, 32)
-	if err != nil {
-		return invalidInput()
-	}
-
-	expiresAt := "0"
-	if minutes > 0 {
-		now := time.Now()
-		end, _ := now.Add(time.Minute * time.Duration(minutes)).MarshalText()
-		expiresAt = string(end)
-	}
+	now := time.Now()
+	nowText, _ := now.MarshalText()
+	remainingViews, _ := strconv.ParseInt(maxViews, 10, 32)
 
 	secret := Secret{
 		Hash:           uuid.New().String(),
 		SecretText:     text,
-		CreatedAt:      time.Now().String(),
-		ExpiresAt:      expiresAt,
+		CreatedAt:      string(nowText),
+		ExpiresAt:      expirationTime(ttl),
 		RemainingViews: int32(remainingViews),
 	}
 
 	all = append(all, secret)
-
 	return secret, nil
 }
 
@@ -69,6 +59,32 @@ func FindSecret(hash string) (Secret, error) {
 	return Secret{}, errors.New("Secret not found")
 }
 
-func invalidInput() (Secret, error) {
-	return Secret{}, errors.New("Invalid input")
+func isValid(text string, maxViews string, ttl string) bool {
+	if text == "" || maxViews == "" || ttl == "" {
+		return false
+	}
+
+	remainingViews, err := strconv.ParseInt(maxViews, 10, 32)
+	if err != nil || remainingViews < 1 {
+		return false
+	}
+
+	minutes, err := strconv.ParseInt(ttl, 10, 32)
+	if err != nil || minutes < 0 {
+		return false
+	}
+
+	return true
+}
+
+func expirationTime(ttl string) string {
+	expiresAt := ttl
+	minutes, _ := strconv.ParseInt(ttl, 10, 32)
+
+	if minutes > 0 {
+		end, _ := time.Now().Add(time.Minute * time.Duration(minutes)).MarshalText()
+		expiresAt = string(end)
+	}
+
+	return expiresAt
 }
