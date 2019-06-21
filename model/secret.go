@@ -1,4 +1,4 @@
-package secret
+package model
 
 import (
 	"errors"
@@ -18,7 +18,7 @@ type Secret struct {
 	RemainingViews int32  `json:"remainingViews" xml:"remainingViews"`
 }
 
-func Build(text string, maxViews string, ttl string) (Secret, error) {
+func NewSecret(text string, maxViews string, ttl string) (Secret, error) {
 	remainingViews, err := strconv.ParseInt(maxViews, 10, 32)
 	if err != nil {
 		return invalidInput()
@@ -49,7 +49,7 @@ func Build(text string, maxViews string, ttl string) (Secret, error) {
 	return secret, nil
 }
 
-func Find(hash string) (Secret, error) {
+func FindSecret(hash string) (Secret, error) {
 	for index, secret := range all {
 		if secret.Hash != hash {
 			continue

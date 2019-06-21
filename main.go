@@ -9,10 +9,10 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"secrets/secret"
+	"secrets/model"
 )
 
-func respond(response http.ResponseWriter, request *http.Request, message secret.Secret) {
+func respond(response http.ResponseWriter, request *http.Request, message model.Secret) {
 	accept := strings.ToLower(request.Header.Get("Accept"))
 	var content []byte
 
@@ -37,10 +37,10 @@ func fail(response http.ResponseWriter, code int, message string) {
 	http.Error(response, message, code)
 }
 
-func createSecret(response http.ResponseWriter, request *http.Request) {
+func postSecret(response http.ResponseWriter, request *http.Request) {
 	request.ParseForm()
 
-	message, err := secret.Build(
+	message, err := model.NewSecret(
 		request.FormValue("secret"),
 		request.FormValue("expireAfterViews"),
 		request.FormValue("expireAfter"),
@@ -55,7 +55,7 @@ func createSecret(response http.ResponseWriter, request *http.Request) {
 
 func getSecret(response http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
-	message, err := secret.Find(params["hash"])
+	message, err := model.FindSecret(params["hash"])
 
 	if err != nil {
 		fail(response, http.StatusNotFound, err.Error())
@@ -68,7 +68,7 @@ func getSecret(response http.ResponseWriter, request *http.Request) {
 func main() {
 	router := mux.NewRouter()
 
-	router.HandleFunc("/v1/secret", createSecret).Methods("POST")
+	router.HandleFunc("/v1/secret", postSecret).Methods("POST")
 	router.HandleFunc("/v1/secret/{hash}", getSecret).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(":8000", router))
