@@ -1,7 +1,7 @@
 package secret
 
 import (
-	"log"
+	"errors"
 	"strconv"
 	"time"
 
@@ -15,19 +15,21 @@ type Secret struct {
 	SecretText     string `json:"secretText" xml:"secretText"`
 	CreatedAt      string `json:"createdAt" xml:"createdAt"`
 	ExpiresAt      string `json:"expiresAt" xml:"expiresAt"`
-	RemainingViews int32  `json:"remainingViews" xml:"remainingViews`
+	RemainingViews int32  `json:"remainingViews" xml:"remainingViews"`
 }
 
-func Build(text string, maxViews string, ttl string) Secret {
+func Build(text string, maxViews string, ttl string) (Secret, error) {
 	remainingViews, err := strconv.ParseInt(maxViews, 10, 32)
-	minutes, err := strconv.ParseInt(ttl, 10, 32)
-
 	if err != nil {
-		log.Println(err)
+		return invalidInput()
+	}
+
+	minutes, err := strconv.ParseInt(ttl, 10, 32)
+	if err != nil {
+		return invalidInput()
 	}
 
 	expiresAt := "0"
-
 	if minutes > 0 {
 		now := time.Now()
 		end, _ := now.Add(time.Minute * time.Duration(minutes)).MarshalText()
@@ -44,10 +46,10 @@ func Build(text string, maxViews string, ttl string) Secret {
 
 	all = append(all, secret)
 
-	return secret
+	return secret, nil
 }
 
-func Find(hash string) Secret {
+func Find(hash string) (Secret, error) {
 	for index, secret := range all {
 		if secret.Hash != hash {
 			continue
@@ -61,8 +63,12 @@ func Find(hash string) Secret {
 		secret.RemainingViews -= 1
 		all[index] = secret
 
-		return secret
+		return secret, nil
 	}
 
-	return Secret{}
+	return Secret{}, errors.New("Secret not found")
+}
+
+func invalidInput() (Secret, error) {
+	return Secret{}, errors.New("Invalid input")
 }

@@ -33,21 +33,34 @@ func respond(response http.ResponseWriter, request *http.Request, message secret
 	response.Write(content)
 }
 
+func fail(response http.ResponseWriter, code int, message string) {
+	http.Error(response, message, code)
+}
+
 func createSecret(response http.ResponseWriter, request *http.Request) {
 	request.ParseForm()
 
-	message := secret.Build(
+	message, err := secret.Build(
 		request.FormValue("secret"),
 		request.FormValue("expireAfterViews"),
 		request.FormValue("expireAfter"),
 	)
+
+	if err != nil {
+		fail(response, http.StatusMethodNotAllowed, err.Error())
+	}
 
 	respond(response, request, message)
 }
 
 func getSecret(response http.ResponseWriter, request *http.Request) {
 	params := mux.Vars(request)
-	message := secret.Find(params["hash"])
+	message, err := secret.Find(params["hash"])
+
+	if err != nil {
+		fail(response, http.StatusNotFound, err.Error())
+		return
+	}
 
 	respond(response, request, message)
 }
