@@ -1,8 +1,6 @@
-hash: 039a8ccde1d5b875856d95b9a663030ccd5e41d61767dc563cff7d57e66b83e9
-updated: 2019-06-21T20:11:49.606925837+03:00
+hash: 743ffd17cd4cb2cb86a166ccf6dfe7467f1d2a740b5ae89bd50936a7253795fb
+updated: 2019-06-21T21:19:34.754631419+03:00
 imports:
-- name: github.com/google/uuid
-  version: 0cd6bf5da1e1c83f8b45653022c74f71af0538a4
 - name: github.com/gorilla/mux
   version: ed099d42384823742bba0bf9a72b53b55c9e2e38
 testImports: []

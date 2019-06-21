@@ -1,11 +1,11 @@
 package model
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strconv"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 var all []Secret
@@ -25,13 +25,16 @@ func NewSecret(text string, maxViews string, ttl string) (Secret, error) {
 
 	now := time.Now()
 	nowText, _ := now.MarshalText()
+	createdAt := string(nowText)
+	expiresAt := expirationTime(ttl)
 	remainingViews, _ := strconv.ParseInt(maxViews, 10, 32)
+	hash := buildHash(text, maxViews, createdAt, ttl)
 
 	secret := Secret{
-		Hash:           uuid.New().String(),
+		Hash:           hash,
 		SecretText:     text,
-		CreatedAt:      string(nowText),
-		ExpiresAt:      expirationTime(ttl),
+		CreatedAt:      createdAt,
+		ExpiresAt:      expiresAt,
 		RemainingViews: int32(remainingViews),
 	}
 
@@ -87,4 +90,11 @@ func expirationTime(ttl string) string {
 	}
 
 	return expiresAt
+}
+
+func buildHash(text string, maxViews string, createdAt string, ttl string) string {
+	data := text + maxViews + createdAt + ttl
+	hash := sha256.Sum256([]byte(data))
+
+	return hex.EncodeToString(hash[:])
 }
