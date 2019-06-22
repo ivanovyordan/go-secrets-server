@@ -7,9 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
-
 	"secrets/model"
+	"secrets/tools"
+
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -68,11 +69,17 @@ func getSecret(response http.ResponseWriter, request *http.Request) {
 	respond(response, request, message)
 }
 
+func init() {
+	tools.InitMetrics()
+}
+
 func main() {
 	router := mux.NewRouter()
+	router.Use(tools.MetricsMiddleware)
 
-	router.HandleFunc("/v1/secret", postSecret).Methods("POST")
-	router.HandleFunc("/v1/secret/{hash}", getSecret).Methods("GET")
+	router.Handle("/metrics", tools.GetMetrics()).Methods("GET").Name("GetMetrics")
+	router.HandleFunc("/v1/secret", postSecret).Methods("POST").Name("PostSecret")
+	router.HandleFunc("/v1/secret/{hash}", getSecret).Methods("GET").Name("GetSecret")
 
 	log.Fatal(http.ListenAndServe(":8000", router))
 }
