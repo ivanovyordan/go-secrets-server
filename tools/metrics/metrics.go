@@ -1,4 +1,4 @@
-package tools
+package metrics
 
 import (
 	"net/http"
@@ -29,12 +29,12 @@ var (
 	}, []string{"method", "route"})
 )
 
-func InitMetrics() {
+func Init() {
 	prometheus.MustRegister(callsTotal)
 	prometheus.MustRegister(requestDuration)
 }
 
-func MetricsMiddleware(router http.Handler) http.Handler {
+func Middleware(router http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		start := time.Now()
 
@@ -49,6 +49,6 @@ func MetricsMiddleware(router http.Handler) http.Handler {
 	})
 }
 
-func GetMetrics() http.Handler {
+func Get() http.Handler {
 	return promhttp.Handler()
 }

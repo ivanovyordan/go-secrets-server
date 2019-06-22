@@ -1,23 +1,13 @@
-package model
+package secret
 
 import (
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"log"
-	"os"
+	"secrets/tools/db"
 	"strconv"
 	"time"
-
-	_ "github.com/lib/pq"
-
-	"github.com/joho/godotenv"
 )
-
-var all []Secret
-var db *sql.DB
 
 type Secret struct {
 	Hash           string `json:"hash" xml:"hash"`
@@ -27,12 +17,10 @@ type Secret struct {
 	RemainingViews int32  `json:"remainingViews" xml:"remainingViews"`
 }
 
-func NewSecret(text string, maxViews string, ttl string) (Secret, error) {
+func New(text string, maxViews string, ttl string) (Secret, error) {
 	if !isValid(text, maxViews, ttl) {
 		return Secret{}, errors.New("Invalid input")
 	}
-
-	connect()
 
 	now := time.Now()
 	nowText, _ := now.MarshalText()
@@ -40,7 +28,7 @@ func NewSecret(text string, maxViews string, ttl string) (Secret, error) {
 	remainingViews, _ := strconv.ParseInt(maxViews, 10, 32)
 	hash := buildHash(text, maxViews, string(nowText), ttl)
 
-	_, err := db.Exec(
+	_, err := db.Connection.Exec(
 		"INSERT INTO secrets (hash, secret_text, expires_at, remaining_views) VALUES ($1, $2, $3, $4)",
 		hash, text, expiresAt, remainingViews,
 	)
@@ -52,7 +40,7 @@ func NewSecret(text string, maxViews string, ttl string) (Secret, error) {
 	return find(hash)
 }
 
-func FindSecret(hash string) (Secret, error) {
+func Find(hash string) (Secret, error) {
 	secret, err := find(hash)
 
 	if err == nil {
@@ -64,19 +52,17 @@ func FindSecret(hash string) (Secret, error) {
 
 func decreaseViews(secret *Secret) {
 	secret.RemainingViews -= 1
-	db.Exec(`UPDATE secrets SET remaining_views = remaining_views - 1 WHERE hash = $1`, secret.Hash)
+	db.Connection.Exec(`UPDATE secrets SET remaining_views = remaining_views - 1 WHERE hash = $1`, secret.Hash)
 }
 
 func find(hash string) (Secret, error) {
-	connect()
-
 	var hashText string
 	var secretText string
 	var createdAt string
 	var expiresAt string
 	var remainingViews int32
 
-	err := db.QueryRow(`
+	err := db.Connection.QueryRow(`
 		SELECT
 			hash,
 			secret_text,
@@ -143,28 +129,4 @@ func buildHash(text string, maxViews string, createdAt string, ttl string) strin
 	hash := sha256.Sum256([]byte(data))
 
 	return hex.EncodeToString(hash[:])
-}
-
-func connect() {
-	if db != nil && db.Ping() != nil {
-		return
-	}
-
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s sslmode=disable",
-		os.Getenv("POSTGRES_HOST"),
-		os.Getenv("POSTGRES_USER"),
-		os.Getenv("POSTGRES_PASSWORD"),
-		os.Getenv("POSTGRES_DATABASE"),
-	)
-
-	db, err = sql.Open("postgres", dsn)
-	if err != nil {
-		log.Fatal("Error connecting to the database")
-	}
 }
