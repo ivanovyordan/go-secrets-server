@@ -1,6 +1,10 @@
-hash: 743ffd17cd4cb2cb86a166ccf6dfe7467f1d2a740b5ae89bd50936a7253795fb
-updated: 2019-06-21T21:19:34.754631419+03:00
+hash: 7348f5173606c03bc0334ec40d49d9cd8a4833e189028cc90cbc5322e32e2602
+updated: 2019-06-21T21:43:00.726697983+03:00
 imports:
 - name: github.com/gorilla/mux
   version: ed099d42384823742bba0bf9a72b53b55c9e2e38
+- name: github.com/joho/godotenv
+  version: 23d116af351c84513e1946b527c88823e476be13
+- name: github.com/lib/pq
+  version: bc6a3c0594130b1e34005880bc600b6d3f49fa7f
 testImports: []

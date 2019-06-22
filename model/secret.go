@@ -2,13 +2,22 @@ package model
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"log"
+	"os"
 	"strconv"
 	"time"
+
+	_ "github.com/lib/pq"
+
+	"github.com/joho/godotenv"
 )
 
 var all []Secret
+var db *sql.DB
 
 type Secret struct {
 	Hash           string `json:"hash" xml:"hash"`
@@ -23,43 +32,81 @@ func NewSecret(text string, maxViews string, ttl string) (Secret, error) {
 		return Secret{}, errors.New("Invalid input")
 	}
 
+	connect()
+
 	now := time.Now()
 	nowText, _ := now.MarshalText()
-	createdAt := string(nowText)
 	expiresAt := expirationTime(ttl)
 	remainingViews, _ := strconv.ParseInt(maxViews, 10, 32)
-	hash := buildHash(text, maxViews, createdAt, ttl)
+	hash := buildHash(text, maxViews, string(nowText), ttl)
 
-	secret := Secret{
-		Hash:           hash,
-		SecretText:     text,
-		CreatedAt:      createdAt,
-		ExpiresAt:      expiresAt,
-		RemainingViews: int32(remainingViews),
+	_, err := db.Exec(
+		"INSERT INTO secrets (hash, secret_text, expires_at, remaining_views) VALUES ($1, $2, $3, $4)",
+		hash, text, expiresAt, remainingViews,
+	)
+
+	if err != nil {
+		return Secret{}, err
 	}
 
-	all = append(all, secret)
-	return secret, nil
+	return find(hash)
 }
 
 func FindSecret(hash string) (Secret, error) {
-	for index, secret := range all {
-		if secret.Hash != hash {
-			continue
-		}
+	secret, err := find(hash)
 
-		expirationTime, _ := time.Parse(time.RFC3339, secret.ExpiresAt)
-		if secret.RemainingViews == 0 || time.Now().After(expirationTime) {
-			break
-		}
-
-		secret.RemainingViews -= 1
-		all[index] = secret
-
-		return secret, nil
+	if err == nil {
+		decreaseViews(&secret)
 	}
 
-	return Secret{}, errors.New("Secret not found")
+	return secret, err
+}
+
+func decreaseViews(secret *Secret) {
+	secret.RemainingViews -= 1
+	db.Exec(`UPDATE secrets SET remaining_views = remaining_views - 1 WHERE hash = $1`, secret.Hash)
+}
+
+func find(hash string) (Secret, error) {
+	connect()
+
+	var hashText string
+	var secretText string
+	var createdAt string
+	var expiresAt string
+	var remainingViews int32
+
+	err := db.QueryRow(`
+		SELECT
+			hash,
+			secret_text,
+			created_at,
+			remaining_views,
+			CASE
+				WHEN expires_at = '0001-01-01 00:00:00' THEN '0'
+				ELSE to_char(expires_at, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')
+			END AS expires_at
+		FROM secrets
+		WHERE
+			hash = $1
+			AND remaining_views > 0
+			AND (expires_at = '0001-01-01 00:00:00' OR expires_at > CURRENT_TIMESTAMP)
+		LIMIT 1
+	`, hash).Scan(&hashText, &secretText, &createdAt, &remainingViews, &expiresAt)
+
+	if err != nil {
+		return Secret{}, errors.New("Secret not found")
+	}
+
+	secret := Secret{
+		Hash:           hashText,
+		SecretText:     secretText,
+		CreatedAt:      createdAt,
+		ExpiresAt:      expiresAt,
+		RemainingViews: remainingViews,
+	}
+
+	return secret, nil
 }
 
 func isValid(text string, maxViews string, ttl string) bool {
@@ -80,13 +127,12 @@ func isValid(text string, maxViews string, ttl string) bool {
 	return true
 }
 
-func expirationTime(ttl string) string {
-	expiresAt := ttl
+func expirationTime(ttl string) time.Time {
+	var expiresAt time.Time
 	minutes, _ := strconv.ParseInt(ttl, 10, 32)
 
 	if minutes > 0 {
-		end, _ := time.Now().Add(time.Minute * time.Duration(minutes)).MarshalText()
-		expiresAt = string(end)
+		expiresAt = time.Now().UTC().Add(time.Minute * time.Duration(minutes))
 	}
 
 	return expiresAt
@@ -97,4 +143,28 @@ func buildHash(text string, maxViews string, createdAt string, ttl string) strin
 	hash := sha256.Sum256([]byte(data))
 
 	return hex.EncodeToString(hash[:])
+}
+
+func connect() {
+	if db != nil && db.Ping() != nil {
+		return
+	}
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s sslmode=disable",
+		os.Getenv("POSTGRES_HOST"),
+		os.Getenv("POSTGRES_USER"),
+		os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_DATABASE"),
+	)
+
+	db, err = sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatal("Error connecting to the database")
+	}
 }

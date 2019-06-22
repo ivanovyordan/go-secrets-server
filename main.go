@@ -12,18 +12,18 @@ import (
 	"secrets/model"
 )
 
+const (
+	XMLHeader = `<?xml version="1.0" encoding="UTF-8"?>` + "\n"
+)
+
 func respond(response http.ResponseWriter, request *http.Request, message model.Secret) {
 	accept := strings.ToLower(request.Header.Get("Accept"))
 	var content []byte
 
 	if accept == "application/xml" {
-		const (
-			Header = `<?xml version="1.0" encoding="UTF-8"?>` + "\n"
-		)
-
 		response.Header().Set("Content-Type", "application/xml")
 		content, _ = xml.MarshalIndent(message, "", "  ")
-		content = []byte(Header + string(content))
+		content = []byte(XMLHeader + string(content))
 
 	} else if accept == "application/json" {
 		response.Header().Set("Content-Type", "application/json")
@@ -48,6 +48,7 @@ func postSecret(response http.ResponseWriter, request *http.Request) {
 
 	if err != nil {
 		fail(response, http.StatusMethodNotAllowed, err.Error())
+		return
 	}
 
 	respond(response, request, message)
