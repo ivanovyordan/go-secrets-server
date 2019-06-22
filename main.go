@@ -28,6 +28,8 @@ func respond(response http.ResponseWriter, request *http.Request, message model.
 	} else if accept == "application/json" {
 		response.Header().Set("Content-Type", "application/json")
 		content, _ = json.Marshal(message)
+	} else {
+		fail(response, http.StatusNotAcceptable, "")
 	}
 
 	response.Write(content)
