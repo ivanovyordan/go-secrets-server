@@ -13,12 +13,34 @@ import (
 var Connection *sql.DB
 
 func Connect() error {
-	err := godotenv.Load()
+	var err error
+
+	dsn, err := getDSN()
 	if err != nil {
-		return errors.New("Error loading .env file")
+		return err
 	}
 
-	dsn := fmt.Sprintf(
+	Connection, err = sql.Open("postgres", dsn)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getDSN() (string, error) {
+	environment, _ := os.LookupEnv("ENVIRONMENT")
+	if environment != "production" && godotenv.Load() != nil {
+		return "", errors.New("Error loading .env file")
+	}
+
+	dsn, exists := os.LookupEnv("DATABASE_URL")
+	if exists {
+		return dsn, nil
+	}
+
+	dsn = fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s sslmode=disable",
 		os.Getenv("POSTGRES_HOST"),
 		os.Getenv("POSTGRES_USER"),
@@ -26,12 +48,5 @@ func Connect() error {
 		os.Getenv("POSTGRES_DATABASE"),
 	)
 
-	Connection, err = sql.Open("postgres", dsn)
-
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-
-	return nil
+	return dsn, nil
 }

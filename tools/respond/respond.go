@@ -14,7 +14,7 @@ func Success(response http.ResponseWriter, request *http.Request, message interf
 	if accept == "application/xml" {
 		content = formatXML(response, message)
 	} else if accept == "application/json" {
-		content = formatXML(response, message)
+		content = formatJSON(response, message)
 	} else {
 		Fail(response, http.StatusNotAcceptable, "")
 	}

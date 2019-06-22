@@ -3,10 +3,11 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
-	"secrets/controller/secret"
-	"secrets/tools/db"
-	"secrets/tools/metrics"
+	"github.com/ivanovyordan/go-secrets-server/controller/secret"
+	"github.com/ivanovyordan/go-secrets-server/tools/db"
+	"github.com/ivanovyordan/go-secrets-server/tools/metrics"
 
 	"github.com/gorilla/mux"
 )
@@ -28,5 +29,10 @@ func main() {
 	router.HandleFunc("/secret", secret.Post).Methods("POST").Name("PostSecret")
 	router.HandleFunc("/secret/{hash}", secret.Get).Methods("GET").Name("GetSecret")
 
-	log.Fatal(http.ListenAndServe(":8000", router))
+	port, exists := os.LookupEnv("PORT")
+	if !exists {
+		port = "8000"
+	}
+
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }

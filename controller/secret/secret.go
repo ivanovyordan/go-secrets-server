@@ -2,8 +2,9 @@ package secret
 
 import (
 	"net/http"
-	"secrets/model/secret"
-	"secrets/tools/respond"
+
+	"github.com/ivanovyordan/go-secrets-server/model/secret"
+	"github.com/ivanovyordan/go-secrets-server/tools/respond"
 
 	"github.com/gorilla/mux"
 )

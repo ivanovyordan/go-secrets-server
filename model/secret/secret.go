@@ -4,9 +4,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"secrets/tools/db"
 	"strconv"
 	"time"
+
+	"github.com/ivanovyordan/go-secrets-server/tools/db"
 )
 
 type Secret struct {
