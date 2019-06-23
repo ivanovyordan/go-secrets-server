@@ -29,7 +29,7 @@ func New(text string, maxViews string, ttl string) (Secret, error) {
 	remainingViews, _ := strconv.ParseInt(maxViews, 10, 32)
 	hash := buildHash(text, maxViews, string(nowText), ttl)
 
-	_, err := db.Connection.Exec(
+	_, err := db.GetInstance().Exec(
 		"INSERT INTO secrets (hash, secret_text, expires_at, remaining_views) VALUES ($1, $2, $3, $4)",
 		hash, text, expiresAt, remainingViews,
 	)
@@ -53,7 +53,7 @@ func Find(hash string) (Secret, error) {
 
 func decreaseViews(secret *Secret) {
 	secret.RemainingViews -= 1
-	db.Connection.Exec(`UPDATE secrets SET remaining_views = remaining_views - 1 WHERE hash = $1`, secret.Hash)
+	db.GetInstance().Exec(`UPDATE secrets SET remaining_views = remaining_views - 1 WHERE hash = $1`, secret.Hash)
 }
 
 func find(hash string) (Secret, error) {
@@ -63,7 +63,7 @@ func find(hash string) (Secret, error) {
 	var expiresAt string
 	var remainingViews int32
 
-	err := db.Connection.QueryRow(`
+	err := db.GetInstance().QueryRow(`
 		SELECT
 			hash,
 			secret_text,

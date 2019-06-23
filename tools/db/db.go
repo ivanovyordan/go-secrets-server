@@ -10,9 +10,17 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var Connection *sql.DB
+var connection *sql.DB
 
-func Connect() error {
+func GetInstance() *sql.DB {
+	if connection == nil {
+		connect()
+	}
+
+	return connection
+}
+
+func connect() error {
 	var err error
 
 	dsn, err := getDSN()
@@ -20,7 +28,7 @@ func Connect() error {
 		return err
 	}
 
-	Connection, err = sql.Open("postgres", dsn)
+	connection, err = sql.Open("postgres", dsn)
 
 	if err != nil {
 		return err
